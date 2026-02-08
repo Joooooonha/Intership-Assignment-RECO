@@ -81,4 +81,58 @@ public class OcrFileReader {
         }
         return 0.0;
     }
+
+    /**
+     * MultipartFile에서 텍스트 추출
+     */
+    public String readFromMultipartFile(org.springframework.web.multipart.MultipartFile file) throws IOException {
+        log.info("MultipartFile 읽기 - {}", file.getOriginalFilename());
+
+        String jsonContent = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        JsonNode rootNode = objectMapper.readTree(jsonContent);
+
+        return extractTextFromJson(rootNode);
+    }
+
+    /**
+     * MultipartFile에서 신뢰도 추출
+     */
+    public Double extractConfidence(org.springframework.web.multipart.MultipartFile file) throws IOException {
+        String jsonContent = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        JsonNode rootNode = objectMapper.readTree(jsonContent);
+
+        if (rootNode.has("confidence")) {
+            return rootNode.get("confidence").asDouble();
+        }
+        return null;
+    }
+
+    /**
+     * JSON 문자열에서 텍스트 추출
+     */
+    public String readFromString(String jsonContent) {
+        try {
+            JsonNode rootNode = objectMapper.readTree(jsonContent);
+            return extractTextFromJson(rootNode);
+        } catch (IOException e) {
+            log.error("JSON 파싱 실패: {}", e.getMessage());
+            throw new IllegalArgumentException("유효하지 않은 JSON 형식입니다", e);
+        }
+    }
+
+    /**
+     * JSON 문자열에서 신뢰도 추출
+     */
+    public Double extractConfidenceFromString(String jsonContent) {
+        try {
+            JsonNode rootNode = objectMapper.readTree(jsonContent);
+            if (rootNode.has("confidence")) {
+                return rootNode.get("confidence").asDouble();
+            }
+            return null;
+        } catch (IOException e) {
+            log.error("JSON 파싱 실패: {}", e.getMessage());
+            return null;
+        }
+    }
 }
