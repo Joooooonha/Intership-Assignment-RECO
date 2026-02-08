@@ -34,6 +34,25 @@ public class WeightValidator {
             return ValidationResult.cannotValidate("총중량 또는 공차중량이 누락되었습니다");
         }
 
+        // 음수 값 체크 (계산 전에 수행)
+        if (totalWeight < 0) {
+            log.warn("잘못된 입력 - 총중량이 음수: {}", totalWeight);
+            return ValidationResult.invalid(null,
+                    String.format("총중량(%dkg)은 음수일 수 없습니다", totalWeight));
+        }
+        if (emptyWeight < 0) {
+            log.warn("잘못된 입력 - 공차중량이 음수: {}", emptyWeight);
+            return ValidationResult.invalid(null,
+                    String.format("공차중량(%dkg)은 음수일 수 없습니다", emptyWeight));
+        }
+
+        // 범위 체크 (공차중량 > 총중량은 논리적으로 불가)
+        if (emptyWeight > totalWeight) {
+            log.warn("잘못된 입력 - 공차중량({})이 총중량({})보다 큼", emptyWeight, totalWeight);
+            return ValidationResult.invalid(null,
+                    String.format("공차중량(%dkg)이 총중량(%dkg)보다 클 수 없습니다", emptyWeight, totalWeight));
+        }
+
         // 계산된 실중량
         int calculatedNetWeight = totalWeight - emptyWeight;
 
