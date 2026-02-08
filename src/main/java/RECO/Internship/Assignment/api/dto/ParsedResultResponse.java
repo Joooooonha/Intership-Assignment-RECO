@@ -1,6 +1,5 @@
 package RECO.Internship.Assignment.api.dto;
 
-import RECO.Internship.Assignment.domain.validator.WeightValidator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Data;
@@ -50,8 +49,28 @@ public class ParsedResultResponse {
     @Data
     @Builder
     public static class ValidationInfo {
+        // 전체 검증 상태 (모든 검증 종합)
+        private String overallStatus;
+        private String overallMessage;
+
+        // 중량 검증
+        private FieldValidation weight;
+
+        // 날짜/시간 검증
+        private FieldValidation dateTime;
+
+        // GPS 검증
+        private FieldValidation gps;
+
+        // 차량번호 검증
+        private FieldValidation vehicle;
+    }
+
+    @Data
+    @Builder
+    public static class FieldValidation {
         private String status;
         private String message;
-        private Integer calculatedNetWeight;
+        private Object value; // 계산된 값 등 (예: calculatedNetWeight)
     }
 }
