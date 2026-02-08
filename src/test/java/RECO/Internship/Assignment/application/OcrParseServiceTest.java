@@ -7,7 +7,6 @@ import RECO.Internship.Assignment.domain.validator.GpsValidator;
 import RECO.Internship.Assignment.domain.validator.VehicleValidator;
 import RECO.Internship.Assignment.domain.validator.WeightValidator;
 import RECO.Internship.Assignment.infrastructure.file.OcrFileReader;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -55,6 +54,29 @@ class OcrParseServiceTest {
             실중량: 5,010 kg
             """;
 
+    /**
+     * 공통 mock 설정 헬퍼
+     */
+    private void setupCommonMocks() {
+        // DateTime validator mock
+        given(dateTimeValidator.validateDate(anyString()))
+                .willReturn(new DateTimeValidator.ValidationResult(
+                        DateTimeValidator.ValidationStatus.VALID, "날짜 형식 유효"));
+        given(dateTimeValidator.validateTime(anyString()))
+                .willReturn(new DateTimeValidator.ValidationResult(
+                        DateTimeValidator.ValidationStatus.VALID, "시간 형식 유효"));
+
+        // GPS validator mock
+        given(gpsValidator.validateCoordinates(any(double[].class)))
+                .willReturn(new GpsValidator.ValidationResult(
+                        GpsValidator.ValidationStatus.VALID, "GPS 좌표 유효"));
+
+        // Vehicle validator mock
+        given(vehicleValidator.validateVehicleNumber(anyString()))
+                .willReturn(new VehicleValidator.ValidationResult(
+                        VehicleValidator.ValidationStatus.VALID, "차량번호 유효"));
+    }
+
     @Nested
     @DisplayName("parseFromFile")
     class ParseFromFile {
@@ -91,6 +113,9 @@ class OcrParseServiceTest {
             given(weightValidator.validateWeightCalculation(12480, 7470, 5010))
                     .willReturn(WeightValidator.ValidationResult.valid(5010, "검증 성공"));
 
+            // Mock other validators
+            setupCommonMocks();
+
             // when
             ParsedResultResponse result = ocrParseService.parseFromFile(file);
 
@@ -105,7 +130,14 @@ class OcrParseServiceTest {
             assertThat(result.getConfidence()).isEqualTo(0.95);
             assertThat(result.getGps().getLatitude()).isEqualTo(37.105317);
             assertThat(result.getGps().getLongitude()).isEqualTo(127.375673);
-            assertThat(result.getValidation().getStatus()).isEqualTo("VALID");
+
+            // 새로운 ValidationInfo 구조 검증
+            assertThat(result.getValidation().getOverallStatus()).isEqualTo("VALID");
+            assertThat(result.getValidation().getOverallMessage()).isEqualTo("모든 검증 통과");
+            assertThat(result.getValidation().getWeight().getStatus()).isEqualTo("VALID");
+            assertThat(result.getValidation().getDateTime().getStatus()).isEqualTo("VALID");
+            assertThat(result.getValidation().getGps().getStatus()).isEqualTo("VALID");
+            assertThat(result.getValidation().getVehicle().getStatus()).isEqualTo("VALID");
         }
     }
 
@@ -139,6 +171,20 @@ class OcrParseServiceTest {
             given(weightValidator.validateWeightCalculation(12480, 7470, 5010))
                     .willReturn(WeightValidator.ValidationResult.valid(5010, "검증 성공"));
 
+            // Mock other validators - GPS returns CANNOT_VALIDATE when null
+            given(dateTimeValidator.validateDate(anyString()))
+                    .willReturn(new DateTimeValidator.ValidationResult(
+                            DateTimeValidator.ValidationStatus.VALID, "날짜 형식 유효"));
+            given(dateTimeValidator.validateTime(anyString()))
+                    .willReturn(new DateTimeValidator.ValidationResult(
+                            DateTimeValidator.ValidationStatus.VALID, "시간 형식 유효"));
+            given(gpsValidator.validateCoordinates((double[]) null))
+                    .willReturn(new GpsValidator.ValidationResult(
+                            GpsValidator.ValidationStatus.CANNOT_VALIDATE, "GPS 좌표가 없습니다"));
+            given(vehicleValidator.validateVehicleNumber(anyString()))
+                    .willReturn(new VehicleValidator.ValidationResult(
+                            VehicleValidator.ValidationStatus.VALID, "차량번호 유효"));
+
             // when
             ParsedResultResponse result = ocrParseService.parseFromJson(jsonContent);
 
@@ -146,7 +192,10 @@ class OcrParseServiceTest {
             assertThat(result.getDocumentType()).isEqualTo("계량증명서");
             assertThat(result.getConfidence()).isEqualTo(0.88);
             assertThat(result.getGps()).isNull();
-            assertThat(result.getValidation().getStatus()).isEqualTo("VALID");
+
+            // GPS가 없으면 CANNOT_VALIDATE 상태
+            assertThat(result.getValidation().getOverallStatus()).isEqualTo("CANNOT_VALIDATE");
+            assertThat(result.getValidation().getGps().getStatus()).isEqualTo("CANNOT_VALIDATE");
         }
     }
 
@@ -155,8 +204,8 @@ class OcrParseServiceTest {
     class ValidationFailure {
 
         @Test
-        @DisplayName("중량 불일치 시 WARNING 상태를 반환한다")
-        void parseFromJson_weightMismatch_returnsWarning() {
+        @DisplayName("중량 불일치 시 INVALID 상태를 반환한다")
+        void parseFromJson_weightMismatch_returnsInvalid() {
             // given
             String jsonContent = "{\"text\": \"test\"}";
 
@@ -180,13 +229,28 @@ class OcrParseServiceTest {
                     .willReturn(WeightValidator.ValidationResult.invalid(5010,
                             "계산된 실중량(5010kg)과 입력된 실중량(6000kg)이 990kg 차이납니다 (허용: 100kg)"));
 
+            // Mock other validators
+            given(dateTimeValidator.validateDate(anyString()))
+                    .willReturn(new DateTimeValidator.ValidationResult(
+                            DateTimeValidator.ValidationStatus.VALID, "날짜 형식 유효"));
+            given(dateTimeValidator.validateTime((String) null))
+                    .willReturn(new DateTimeValidator.ValidationResult(
+                            DateTimeValidator.ValidationStatus.CANNOT_VALIDATE, "시간이 없습니다"));
+            given(gpsValidator.validateCoordinates((double[]) null))
+                    .willReturn(new GpsValidator.ValidationResult(
+                            GpsValidator.ValidationStatus.CANNOT_VALIDATE, "GPS 좌표가 없습니다"));
+            given(vehicleValidator.validateVehicleNumber((String) null))
+                    .willReturn(new VehicleValidator.ValidationResult(
+                            VehicleValidator.ValidationStatus.CANNOT_VALIDATE, "차량번호가 없습니다"));
+
             // when
             ParsedResultResponse result = ocrParseService.parseFromJson(jsonContent);
 
             // then
-            assertThat(result.getValidation().getStatus()).isEqualTo("INVALID");
-            assertThat(result.getValidation().getMessage()).contains("차이");
-            assertThat(result.getValidation().getCalculatedNetWeight()).isEqualTo(5010);
+            assertThat(result.getValidation().getOverallStatus()).isEqualTo("INVALID");
+            assertThat(result.getValidation().getWeight().getStatus()).isEqualTo("INVALID");
+            assertThat(result.getValidation().getWeight().getMessage()).contains("차이");
+            assertThat(result.getValidation().getWeight().getValue()).isEqualTo(5010);
         }
     }
 }
