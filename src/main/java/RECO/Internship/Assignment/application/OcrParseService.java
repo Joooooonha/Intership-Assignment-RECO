@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * OCR 파싱 서비스
@@ -75,9 +77,48 @@ public class OcrParseService {
         String issuer = fieldExtractor.extractIssuer(ocrText);
         double[] gpsCoords = fieldExtractor.extractGpsCoordinates(ocrText);
 
-        // 중량 검증
-        WeightValidator.ValidationResult weightResult = weightValidator.validateWeightCalculation(totalWeight,
-                emptyWeight, netWeight);
+        // === 모든 검증 수행 ===
+
+        // 1. 중량 검증
+        WeightValidator.ValidationResult weightResult = weightValidator.validateWeightCalculation(
+                totalWeight, emptyWeight, netWeight);
+        ParsedResultResponse.FieldValidation weightValidation = ParsedResultResponse.FieldValidation.builder()
+                .status(weightResult.status().name())
+                .message(weightResult.message())
+                .value(weightResult.calculatedNetWeight())
+                .build();
+
+        // 2. 날짜/시간 검증
+        DateTimeValidator.ValidationResult dateResult = dateTimeValidator.validateDate(date);
+        DateTimeValidator.ValidationResult timeResult = dateTimeValidator.validateTime(time);
+        String dateTimeStatus = combineStatus(dateResult.status().name(), timeResult.status().name());
+        String dateTimeMessage = combineMessages(dateResult.message(), timeResult.message());
+        ParsedResultResponse.FieldValidation dateTimeValidation = ParsedResultResponse.FieldValidation.builder()
+                .status(dateTimeStatus)
+                .message(dateTimeMessage)
+                .build();
+
+        // 3. GPS 검증
+        GpsValidator.ValidationResult gpsResult = gpsValidator.validateCoordinates(gpsCoords);
+        ParsedResultResponse.FieldValidation gpsValidation = ParsedResultResponse.FieldValidation.builder()
+                .status(gpsResult.status().name())
+                .message(gpsResult.message())
+                .build();
+
+        // 4. 차량번호 검증
+        VehicleValidator.ValidationResult vehicleResult = vehicleValidator.validateVehicleNumber(vehicleNumber);
+        ParsedResultResponse.FieldValidation vehicleValidation = ParsedResultResponse.FieldValidation.builder()
+                .status(vehicleResult.status().name())
+                .message(vehicleResult.message())
+                .build();
+
+        // 전체 검증 상태 종합
+        String overallStatus = determineOverallStatus(
+                weightResult.status().name(),
+                dateTimeStatus,
+                gpsResult.status().name(),
+                vehicleResult.status().name());
+        String overallMessage = buildOverallMessage(overallStatus);
 
         // GPS 정보 구성
         ParsedResultResponse.GpsInfo gpsInfo = null;
@@ -90,12 +131,15 @@ public class OcrParseService {
 
         // 검증 결과 구성
         ParsedResultResponse.ValidationInfo validationInfo = ParsedResultResponse.ValidationInfo.builder()
-                .status(weightResult.status().name())
-                .message(weightResult.message())
-                .calculatedNetWeight(weightResult.calculatedNetWeight())
+                .overallStatus(overallStatus)
+                .overallMessage(overallMessage)
+                .weight(weightValidation)
+                .dateTime(dateTimeValidation)
+                .gps(gpsValidation)
+                .vehicle(vehicleValidation)
                 .build();
 
-        log.info("OCR 파싱 완료 - 문서종류: {}, 검증결과: {}", documentType, weightResult.status());
+        log.info("OCR 파싱 완료 - 문서종류: {}, 전체검증: {}", documentType, overallStatus);
 
         return ParsedResultResponse.builder()
                 .documentType(documentType)
@@ -112,5 +156,65 @@ public class OcrParseService {
                 .validation(validationInfo)
                 .confidence(confidence)
                 .build();
+    }
+
+    /**
+     * 두 상태 중 더 심각한 상태 반환
+     */
+    private String combineStatus(String status1, String status2) {
+        if ("INVALID".equals(status1) || "INVALID".equals(status2)) {
+            return "INVALID";
+        }
+        if ("WARNING".equals(status1) || "WARNING".equals(status2)) {
+            return "WARNING";
+        }
+        if ("CANNOT_VALIDATE".equals(status1) || "CANNOT_VALIDATE".equals(status2)) {
+            return "CANNOT_VALIDATE";
+        }
+        return "VALID";
+    }
+
+    /**
+     * 메시지 결합
+     */
+    private String combineMessages(String msg1, String msg2) {
+        List<String> messages = new ArrayList<>();
+        if (msg1 != null && !msg1.isBlank())
+            messages.add(msg1);
+        if (msg2 != null && !msg2.isBlank())
+            messages.add(msg2);
+        return String.join("; ", messages);
+    }
+
+    /**
+     * 전체 검증 상태 결정
+     */
+    private String determineOverallStatus(String... statuses) {
+        for (String status : statuses) {
+            if ("INVALID".equals(status))
+                return "INVALID";
+        }
+        for (String status : statuses) {
+            if ("WARNING".equals(status))
+                return "WARNING";
+        }
+        for (String status : statuses) {
+            if ("CANNOT_VALIDATE".equals(status))
+                return "CANNOT_VALIDATE";
+        }
+        return "VALID";
+    }
+
+    /**
+     * 전체 검증 메시지 생성
+     */
+    private String buildOverallMessage(String overallStatus) {
+        return switch (overallStatus) {
+            case "VALID" -> "모든 검증 통과";
+            case "WARNING" -> "일부 항목에 경고가 있습니다";
+            case "INVALID" -> "검증 실패 항목이 있습니다";
+            case "CANNOT_VALIDATE" -> "일부 항목을 검증할 수 없습니다";
+            default -> "검증 완료";
+        };
     }
 }
