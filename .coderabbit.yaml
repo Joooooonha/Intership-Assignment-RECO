@@ -1,0 +1,17 @@
+# CodeRabbit 설정
+reviews:
+  # 자동 리뷰 설정
+  auto_review:
+    enabled: true
+    # develop, main 브랜치로 가는 PR 모두 리뷰
+    base_branches:
+      - develop
+      - main
+
+  # 리뷰 언어
+  path_instructions: []
+  
+# 채팅 설정 (한국어)
+chat:
+  auto_reply: true
+  language: ko-KR
