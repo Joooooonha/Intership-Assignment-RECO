@@ -88,11 +88,11 @@ public class OcrParseController {
                 ParsedResultResponse parsed = ocrParseService.parseFromFile(file);
                 results.add(BatchParseResult.success(filename, parsed));
             } catch (IOException e) {
-                log.error("파일 파싱 실패: {} - {}", filename, e.getMessage());
-                results.add(BatchParseResult.error(filename, "파일 처리 오류: " + e.getMessage()));
+                log.error("파일 파싱 실패: {}", filename, e);
+                results.add(BatchParseResult.error(filename, "파일 처리 중 오류가 발생했습니다."));
             } catch (Exception e) {
-                log.error("예상치 못한 오류: {} - {}", filename, e.getMessage());
-                results.add(BatchParseResult.error(filename, "파싱 오류: " + e.getMessage()));
+                log.error("예상치 못한 오류: {}", filename, e);
+                results.add(BatchParseResult.error(filename, "파싱 중 서버 내부 오류가 발생했습니다."));
             }
         }
 
