@@ -163,12 +163,16 @@ public class DemoClient {
             printField("실중량", root.path("netWeight"), "kg");
 
             // 기타 정보
-            if (!root.path("customer").isMissingNode() && !root.path("customer").isNull()) {
+            JsonNode customer = root.path("customer");
+            JsonNode productName = root.path("productName");
+            JsonNode issuer = root.path("issuer");
+
+            if (isValid(customer) || isValid(productName) || isValid(issuer)) {
                 System.out.println("\n[Other Info]");
                 System.out.println("----------------------------------------");
-                printField("고객사", root.path("customer"));
-                printField("품목", root.path("productName"));
-                printField("발행처", root.path("issuer"));
+                printField("고객사", customer);
+                printField("품목", productName);
+                printField("발행처", issuer);
             }
 
             // GPS 정보
@@ -207,6 +211,10 @@ public class DemoClient {
             // 파싱 실패 시 원본 JSON 출력
             System.out.println(jsonResponse);
         }
+    }
+
+    private boolean isValid(JsonNode node) {
+        return !node.isMissingNode() && !node.isNull();
     }
 
     private void printField(String label, JsonNode node) {
