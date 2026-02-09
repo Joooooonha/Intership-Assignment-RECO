@@ -75,6 +75,9 @@ public class DemoClient {
                     HttpResponse.BodyHandlers.ofString());
 
             return response.statusCode() == 200;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         } catch (Exception e) {
             return false;
         }
@@ -186,7 +189,7 @@ public class DemoClient {
 
             // 검증 결과
             JsonNode validation = root.path("validation");
-            if (!validation.isMissingNode()) {
+            if (isValid(validation)) {
                 System.out.println("\n[Validation]");
                 System.out.println("----------------------------------------");
                 String overallStatus = validation.path("overallStatus").asText();
