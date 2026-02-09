@@ -14,4 +14,4 @@ reviews:
 # 채팅 설정 (한국어)
 chat:
   auto_reply: true
-  language: ko-KR
+  language: Korean
