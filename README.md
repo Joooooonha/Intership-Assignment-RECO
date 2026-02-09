@@ -17,12 +17,12 @@
 
 ```mermaid
 graph TD
-    Client[Client / External API] -->|Request| API[Presentation Layer (API)]
-    API -->|DTO| Service[Application Layer]
-    Service -->|Control Flow| Domain[Domain Layer (Core Logic)]
-    Service -->|File I/O| Infra[Infrastructure Layer]
-    Domain -->|Parsing| Extractor[FieldExtractor]
-    Domain -->|Parsing| Validator[Validators]
+    Client["Client / External API"] -->|Request| API["Presentation Layer (API)"]
+    API -->|DTO| Service["Application Layer"]
+    Service -->|Control Flow| Domain["Domain Layer (Core Logic)"]
+    Service -->|File I/O| Infra["Infrastructure Layer"]
+    Domain -->|Parsing| Extractor["FieldExtractor"]
+    Domain -->|Validation| Validator["Validators"]
 ```
 
 *   **Presentation Layer (`api`)**: 외부 요청을 받고 응답을 반환하는 역할. HTTP 통신과 데이터 변환(DTO)에 집중합니다.
