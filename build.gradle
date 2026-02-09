@@ -32,3 +32,11 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// 데모 클라이언트 실행 태스크
+tasks.register('runDemo', JavaExec) {
+	description = 'OCR 파싱 API 데모 클라이언트 실행'
+	group = 'application'
+	mainClass = 'RECO.Internship.Assignment.DemoClient'
+	classpath = sourceSets.main.runtimeClasspath
+}
