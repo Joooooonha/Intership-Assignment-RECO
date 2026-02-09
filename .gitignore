@@ -26,3 +26,4 @@ logs/
 
 # Test outputs
 test-output/
+result_example.json

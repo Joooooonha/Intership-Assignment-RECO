@@ -17,12 +17,40 @@
 
 ```mermaid
 graph TD
-    Client[Client / External API] -->|Request| API[Presentation Layer (API)]
-    API -->|DTO| Service[Application Layer]
-    Service -->|Control Flow| Domain[Domain Layer (Core Logic)]
-    Service -->|File I/O| Infra[Infrastructure Layer]
-    Domain -->|Parsing| Extractor[FieldExtractor]
-    Domain -->|Parsing| Validator[Validators]
+    Client["Client / External API"] -->|Request| API["Presentation Layer (API)"]
+    API -->|DTO| Service["Application Layer"]
+    Service -->|Control Flow| Domain["Domain Layer (Core Logic)"]
+    Service -->|File I/O| Infra["Infrastructure Layer"]
+    Domain -->|Parsing| Extractor["FieldExtractor"]
+    Domain -->|Validation| Validator["Validators"]
+```
+
+### 아키텍처 구조도 (Structure Diagram)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Presentation Layer                       │
+│  ┌────────────────────┐  ┌────────────────────────────────┐ │
+│  │ OcrParseController │  │ DTO (Response/BatchResult)     │ │
+│  └────────────────────┘  └────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│                    Application Layer                        │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │                  OcrParseService                    │    │
+│  │         (비즈니스 로직 조율 및 파이프라인 관리)         │    │
+│  └─────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│                      Domain Layer                           │
+│  ┌──────────────┐    ┌───────────────────────────────────┐  │
+│  │FieldExtractor│    │            Validators             │  │
+│  │  (필드 추출)  │    │     (중량/차량/날짜/GPS 검증)       │  │
+│  └──────────────┘    └───────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                   Infrastructure Layer                      │
+│  ┌─────────────────┐                                        │
+│  │  OcrFileReader  │                                        │
+│  │ (OCR 파일 읽기)  │                                        │
+│  └─────────────────┘                                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 *   **Presentation Layer (`api`)**: 외부 요청을 받고 응답을 반환하는 역할. HTTP 통신과 데이터 변환(DTO)에 집중합니다.
@@ -50,6 +78,43 @@ OCR 결과 JSON은 `images > fields` 배열 내에 데이터가 존재하거나,
 
 ### 3.3 Data Transfer Objects (DTO)
 *   **`ParsedResultResponse`**: 클라이언트에게 반환되는 최종 응답 객체입니다. 파싱된 데이터뿐만 아니라, **각 필드별 검증 결과(`VALID`/`INVALID`)와 사유**를 포함하여 클라이언트가 문제 원인을 파악할 수 있게 설계되었습니다.
+
+### 3.4 데이터 흐름 (Data Flow)
+```
+1. 파일 읽기      [Infrastructure] OcrFileReader
+        ↓
+2. 필드 추출      [Domain] FieldExtractor (정규표현식/키워드 탐색) -> 정규화 수행
+        ↓
+3. 데이터 검증    [Domain] Validators (중량, 차량번호, 날짜, GPS)
+        ↓
+4. 결과 생성      [API] ParsedResultResponse (검증 결과 포함 DTO)
+```
+
+### 3.5 프로젝트 구조 (Project Structure)
+```
+src/main/java/RECO/Internship/Assignment/
+├── AssignmentApplication.java
+├── DemoClient.java                 # 데모 클라이언트
+├── api/
+│   ├── controller/
+│   │   └── OcrParseController.java # API 엔드포인트
+│   └── dto/
+│       ├── BatchParseResult.java
+│       └── ParsedResultResponse.java
+├── application/
+│   └── OcrParseService.java        # 서비스 로직
+├── domain/
+│   ├── parser/
+│   │   └── FieldExtractor.java     # 핵심 파싱 로직
+│   └── validator/
+│       ├── WeightValidator.java
+│       ├── VehicleValidator.java
+│       ├── DateTimeValidator.java
+│       └── GpsValidator.java
+└── infrastructure/
+    └── file/
+        └── OcrFileReader.java      # 파일 I/O
+```
 
 ## 4. 실행 방법 (How to Run)
 
