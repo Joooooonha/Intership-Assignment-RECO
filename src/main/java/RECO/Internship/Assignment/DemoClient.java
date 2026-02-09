@@ -162,7 +162,7 @@ public class DemoClient {
             printField("공차중량", root.path("emptyWeight"), "kg");
             printField("실중량", root.path("netWeight"), "kg");
 
-            // 기타 정보
+            // 기타 정보 (고객사, 품목, 발행처 중 하나라도 있으면 출력)
             JsonNode customer = root.path("customer");
             JsonNode productName = root.path("productName");
             JsonNode issuer = root.path("issuer");
@@ -225,7 +225,17 @@ public class DemoClient {
         if (node.isMissingNode() || node.isNull()) {
             System.out.println("   " + label + ": -");
         } else {
-            String value = node.isNumber() ? String.format("%,d", node.asInt()) : node.asText();
+            String value;
+            if (node.isNumber()) {
+                // 숫자형일 경우 정수/실수 구분하여 처리 (정밀도 유지)
+                if (node.isIntegralNumber()) {
+                    value = String.format("%,d", node.asLong());
+                } else {
+                    value = node.decimalValue().stripTrailingZeros().toPlainString();
+                }
+            } else {
+                value = node.asText();
+            }
             System.out.println("   " + label + ": " + value + (unit != null ? " " + unit : ""));
         }
     }
