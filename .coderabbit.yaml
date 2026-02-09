@@ -7,11 +7,11 @@ reviews:
     base_branches:
       - develop
       - main
-
-  # 리뷰 언어
+  # 리뷰 언어 (한국어)
+  language: ko-KR
   path_instructions: []
-  
+
 # 채팅 설정 (한국어)
 chat:
   auto_reply: true
-  language: Korean
+  language: ko-KR
