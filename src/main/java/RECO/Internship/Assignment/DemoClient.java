@@ -132,6 +132,9 @@ public class DemoClient {
 
         } catch (IOException | InterruptedException e) {
             System.err.println("[ERROR] 파싱 실패: " + e.getMessage());
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         System.out.println();
